@@ -12,6 +12,7 @@ export default class Scrollbar extends ElElement {
 :host {
   overflow: hidden;
   position: relative;
+  display: block;
   height: 100%;
 }
 
