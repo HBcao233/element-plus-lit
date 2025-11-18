@@ -1,0 +1,416 @@
+import { html } from '../element/index.js';
+
+export default class MarkdownShader {
+  constructor() {
+    // 定义各种Markdown规则
+    this.rules = {
+      // 标题
+      heading: /^(#{1,6})\s+(.+)$/,
+      // 粗体
+      bold: /\*\*(.+?)\*\*/g,
+      // 斜体
+      italic: /\*(.+?)\*/g,
+      // 行内代码
+      inlineCode: /`([^`]+)`/g,
+      // 链接
+      link: /\[([^\]]+)\]\(([^)]+)\)/g,
+      // 图片
+      image: /!\[([^\]]*)\]\(([^)]+)\)/g,
+      // 无序列表
+      unorderedList: /^([\*\-\+])\s+(.+)$/,
+      // 有序列表
+      orderedList: /^(\d+\.)\s+(.+)$/,
+      // 引用
+      blockquote: /^>\s+(.+)$/,
+      // 分割线
+      horizontalRule: /^(-{3,}|\*{3,})$/,
+      // 代码块标记（支持不同数量的反引号）
+      codeBlockFence: /^(`{3,}|~{3,})(\w*)?$/,
+      // 缩进代码块
+      indentedCode: /^(?: {4}|\t)(.*)$/,
+      // 表格相关规则
+      tableRow: /^\|(.+)\|$/,
+      tableSeparator: /^\|[\s\-:\|]+\|$/,
+      // 脚注
+      reference: /^\[(\^\d+)\]:\s+(.+)$/,
+    };
+    
+    this.htmlOutput = [];
+    this.codeBlockState = null;
+    this.codeBlockContent = [];
+    this.codeBlockLang = '';
+    this.codeBlockFenceChar = '';
+    this.codeBlockFenceLength = 0;
+    this.listStack = [];
+    this.indentedCodeLines = [];
+    // 表格相关状态
+    this.tableState = null; // null | 'header' | 'body'
+    this.tableHeaders = [];
+    this.tableAlignments = [];
+    this.tableRows = [];
+  }
+
+  // 解析主入口
+  parse(markdown) {
+    this.htmlOutput = [];
+    this.codeBlockState = null;
+    this.codeBlockContent = [];
+    this.listStack = [];
+    this.indentedCodeLines = [];
+    // 重置表格状态
+    this.tableState = null;
+    this.tableHeaders = [];
+    this.tableAlignments = [];
+    this.tableRows = [];
+  
+    const lines = markdown.split('\n');
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const nextLine = lines[i + 1];
+      
+      if (this.rules.tableRow.test(line)) {
+        // 如果下一行是分隔符，这是表头
+        if (nextLine && this.rules.tableSeparator.test(nextLine)) {
+          // 结束之前的表格（如果有）
+          if (this.tableState) {
+            this.flushTable();
+          }
+          
+          this.tableState = 'header';
+          this.tableHeaders = this.parseTableRow(line);
+          this.tableAlignments = this.parseTableRow(nextLine);
+          this.tableRows = [];
+          i++; // 跳过分隔符行
+          continue;
+        }
+        // 如果在表格中，这是表格行
+        else if (this.tableState) {
+          const cells = this.parseTableRow(line);
+          // 确保单元格数量与表头一致
+          while (cells.length < this.tableHeaders.length) {
+            cells.push('');
+          }
+          this.tableRows.push(cells.slice(0, this.tableHeaders.length));
+          continue;
+        }
+      }
+      if (this.tableState && !this.rules.tableRow.test(line)) {
+        this.flushTable();
+      }
+      
+      // 处理围栏代码块
+      if (this.handleFencedCodeBlock(line)) {
+        continue;
+      }
+      
+      // 如果在代码块中，收集内容
+      if (this.codeBlockState === 'fenced') {
+        this.codeBlockContent.push(line);
+        continue;
+      }
+      
+      // 处理缩进代码块
+      if (this.rules.indentedCode.test(line) && this.listStack.length === 0) {
+        this.handleIndentedCodeBlock(line);
+        continue;
+      } else if (this.indentedCodeLines.length > 0) {
+        // 结束缩进代码块
+        this.flushIndentedCodeBlock();
+      }
+      
+      // 处理空行
+      if (line.trim() === '') {
+        continue;
+      }
+      
+      // 处理各种Markdown元素
+      if (this.rules.heading.test(line)) {
+        this.parseHeading(line);
+      } else if (this.rules.horizontalRule.test(line)) {
+        this.htmlOutput.push(html`<span class="token horizontal punctuation">${line}</span>`);
+      } else if (this.rules.blockquote.test(line)) {
+        this.parseBlockquote(line);
+      } else if (this.rules.unorderedList.test(line)) {
+        this.parseUnorderedList(line);
+      } else if (this.rules.orderedList.test(line)) {
+        this.parseOrderedList(line);
+      } else if (this.rules.reference.test(line)) {
+        this.parseReference(line);
+      }else {
+        this.parseParagraph(line);
+      }
+    }
+    
+    // 清理未完成的状态
+    this.flushTable();
+    this.flushIndentedCodeBlock();
+    
+    // 如果代码块未闭合，强制闭合
+    if (this.codeBlockState === 'fenced') {
+      this.outputFencedCodeBlock();
+    }
+    
+    return this.htmlOutput;
+  }
+  
+  // 解析表格行
+  parseTableRow(line) {
+    // 去掉首尾的 | 并分割
+    const cells = line.slice(1, -1).split('|').map(cell => cell.trim());
+    return cells;
+  }
+  
+  // 输出完整的表格
+  flushTable() {
+    if (!this.tableHeaders.length) return;
+    
+    this.htmlOutput.push(html`<span class="token table"><span class="token table-header-row"><span class="token punctuation">|</span>${this.tableHeaders.map(i => html`<span class="token table-header important"> ${i} </span><span class="token punctuation">|</span>`)}</span>\n<span class="token table-line"><span class="token punctuation">|</span>${this.tableAlignments.map(i => html`<span class="token punctuation">${i}</span><span class="token punctuation">|</span>`)}</span>\n${this.tableRows.map(j => html`<span class="token table-data-rows"><span class="token punctuation">|</span>${j.map(i => html`<span class="token table-data"> ${i} </span><span class="token punctuation">|</span>`)}</span>\n`)}</span>`);
+    
+    // 重置表格状态
+    this.tableState = null;
+    this.tableHeaders = [];
+    this.tableAlignments = [];
+    this.tableRows = [];
+  }
+
+  // 处理围栏代码块（支持嵌套）
+  handleFencedCodeBlock(line) {
+    const match = line.match(this.rules.codeBlockFence);
+    
+    if (!match) {
+      return false;
+    }
+    
+    const fenceChar = match[1][0];
+    const fenceLength = match[1].length;
+    const lang = match[2] || '';
+    
+    // 如果不在代码块中，开始新的代码块
+    if (this.codeBlockState !== 'fenced') {
+      this.codeBlockState = 'fenced';
+      this.codeBlockFenceChar = fenceChar;
+      this.codeBlockFenceLength = fenceLength;
+      this.codeBlockLang = lang;
+      this.codeBlockContent = [];
+      return true;
+    }
+    
+    // 如果在代码块中，检查是否是结束标记
+    // 结束标记必须：
+    // 1. 使用相同的字符（` 或 ~）
+    // 2. 至少有开始标记那么多个字符
+    // 3. 不能有语言标识
+    if (fenceChar === this.codeBlockFenceChar && 
+        fenceLength >= this.codeBlockFenceLength && 
+        !lang) {
+      this.outputFencedCodeBlock();
+      return true;
+    }
+    
+    // 否则这行是代码块的内容
+    return false;
+  }
+
+  // 输出围栏代码块
+  outputFencedCodeBlock() {
+    const lang = this.codeBlockLang ? ` class="language-${this.codeBlockLang}"` : '';
+    const content = this.codeBlockContent.join('\n');
+    this.htmlOutput.push(html`<span class="token code"><span class="token punctuation">\`\`\`</span><span class="token code-language">${this.codeBlockLang}</span>\n<span class="token code-block${lang}">${content}</span>\n<span class="token punctuation">\`\`\`</span></span>\n`);
+    
+    // 重置状态
+    this.codeBlockState = null;
+    this.codeBlockContent = [];
+    this.codeBlockLang = '';
+    this.codeBlockFenceChar = '';
+    this.codeBlockFenceLength = 0;
+  }
+
+  // 处理缩进代码块
+  handleIndentedCodeBlock(line) {
+    const match = line.match(this.rules.indentedCode);
+    if (match) {
+      this.indentedCodeLines.push(match[1]);
+    }
+  }
+
+  // 输出缩进代码块
+  flushIndentedCodeBlock() {
+    if (this.indentedCodeLines.length > 0) {
+      const content = this.indentedCodeLines.join('\n');
+      this.htmlOutput.push(html`<span class="token code"><span class="token punctuation">\`\`\`</span>\n<span class="token code-language"></span><span class="token code-block">${content}</span>\n<span class="token punctuation">\`\`\`</span></span>\n`);
+      this.indentedCodeLines = [];
+    }
+  }
+
+  // 解析标题
+  parseHeading(line) {
+    const match = line.match(this.rules.heading);
+    if (match) {
+      const level = match[1].length;
+      const content = this.parseInline(match[2]);
+      this.htmlOutput.push(html`<span class="token title important"><span class="token punctuation">${match[1]}</span> ${content}</span>\n`);
+    }
+  }
+
+  // 解析引用
+  parseBlockquote(line) {
+    const match = line.match(this.rules.blockquote);
+    if (match) {
+      const content = this.parseInline(match[1]);
+      this.htmlOutput.push(html`<span class="token blockquote punctuation">></span> ${content}\n`);
+    }
+  }
+
+  // 解析无序列表
+  parseUnorderedList(line) {
+    const match = line.match(this.rules.unorderedList);
+    if (match) {
+      if (this.listStack.length === 0 || this.listStack[this.listStack.length - 1] !== 'ul') {
+        this.listStack.push('ul');
+      }
+      const content = this.parseInline(match[2]);
+      this.htmlOutput.push(html`<span class="token list punctuation">${match[1]}</span> ${content}\n`);
+    }
+  }
+
+  // 解析有序列表
+  parseOrderedList(line) {
+    const match = line.match(this.rules.orderedList);
+    if (match) {
+      if (this.listStack.length === 0 || this.listStack[this.listStack.length - 1] !== 'ol') {
+        this.listStack.push('ol');
+      }
+      const content = this.parseInline(match[2]);
+      this.htmlOutput.push(html`<span class="token list punctuation">${match[1]}</span> ${content}\n`);
+    }
+  }
+
+  // 解析段落
+  parseParagraph(line) {
+    const match = line.match(this.rules.orderedList);
+    if (line.trim()) {
+      const content = this.parseInline(line);
+      this.htmlOutput.push(html`${content}\n`);
+    }
+  }
+  
+  // 解析脚注
+  parseReference(line) {
+    const match = line.match(this.rules.reference);
+    if (match) {
+      const content = this.parseInline(match[2]);
+      this.htmlOutput.push(html`<span class="token url-reference url"><span class="token punctuation">[</span><span class="token variable">${match[1]}</span><span class="token punctuation">]</span><span class="token punctuation">:</span> ${content}</span>\n`);
+    }
+  }
+
+  // 解析行内元素
+  parseInline(text) {
+    const elements = [];
+    const tokens = [];
+    
+    // 定义需要处理的内联模式
+    const patterns = [
+      { type: 'image', regex: /!\[([^\]]*)\]\(([^)]+)\)/g },
+      { type: 'link', regex: /\[([^\]]+)\]\(([^)]+)\)/g },
+      { type: 'code', regex: /`([^`]+)`/g },
+      { type: 'bold', regex: /\*\*(.+?)\*\*/g },
+      { type: 'italic', regex: /\*(.+?)\*/g }
+    ];
+    
+    // 收集所有匹配的标记
+    patterns.forEach(pattern => {
+      let match;
+      const regex = new RegExp(pattern.regex);
+      
+      while ((match = regex.exec(text)) !== null) {
+        tokens.push({
+          type: pattern.type,
+          start: match.index,
+          end: match.index + match[0].length,
+          match: match,
+          raw: match[0]
+        });
+      }
+    });
+    
+    // 按位置排序
+    tokens.sort((a, b) => a.start - b.start);
+    
+    // 移除重叠的标记（优先保留先出现的）
+    const filteredTokens = [];
+    let lastEnd = 0;
+    
+    for (const token of tokens) {
+      if (token.start >= lastEnd) {
+        filteredTokens.push(token);
+        lastEnd = token.end;
+      }
+    }
+    
+    // 构建结果数组
+    let currentPos = 0;
+    
+    for (const token of filteredTokens) {
+      // 添加标记之前的纯文本
+      if (currentPos < token.start) {
+        const plainText = text.slice(currentPos, token.start);
+        if (plainText) {
+          elements.push(this.escapeHtml(plainText));
+        }
+      }
+      
+      // 根据标记类型生成HTML
+      switch (token.type) {
+        case 'image':
+          elements.push(html`<span class="token url"><span class="token operator">!</span>[<span class="token content">${this.escapeHtml(token.match[1])}</span>](<span class="token url">${token.match[2]}</span>)</span>`);
+          break;
+        case 'link':
+          elements.push(html`<span class="token url">[<span class="token content">${this.escapeHtml(token.match[1])}</span>](<span class="token url">${token.match[2]}</span>)</span>`);
+          break;
+        case 'code':
+          elements.push(html`<span class="token code-snippet code keyword">\`${this.escapeHtml(token.match[1])}\`</span>`);
+          break;
+        case 'bold':
+          elements.push(html`<span class="token bold"><span class="token punctuation">${token.match[0].slice(null, 2)}</span><span class="token content">${this.escapeHtml(token.match[1])}</span><span class="token punctuation">${token.match[0].slice(null, 2)}</span></span>`);
+          break;
+        case 'italic':
+          elements.push(html`<span class="token italic">${this.escapeHtml(token.match[1])}</span>`);
+          break;
+      }
+      
+      currentPos = token.end;
+    }
+    
+    // 添加剩余的纯文本
+    if (currentPos < text.length) {
+      const plainText = text.slice(currentPos);
+      if (plainText) {
+        elements.push(this.escapeHtml(plainText));
+      }
+    }
+    
+    // 如果没有任何标记，返回转义后的原文本
+    if (elements.length === 0) {
+      elements.push(this.escapeHtml(text));
+    }
+    
+    return elements;
+  }
+
+  // HTML转义
+  escapeHtml(text) {
+    const escapeMap = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    };
+    
+    return text.replace(
+      /[&<>"']/g, 
+      char => escapeMap[char]
+    );
+  }
+}

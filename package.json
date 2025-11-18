@@ -1,0 +1,28 @@
+{
+  "name": "element-plus-lit",
+  "version": "0.0.1",
+  "publishConfig": {
+    "access": "public"
+  },
+  "description": "The lit version of Element Plus Component Library which is fast, lightweight web components",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HBcao233/element-plus-lit.git",
+    "directory": "."
+  },
+  "author": "HBcao233",
+  "homepage": "https://github.com/HBcao233/element-plus-lit",
+  "main": "index.js",
+  "module": "index.js",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./development/index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "dependencies": {
+    "lit": "^3.3.1"
+  }
+}
