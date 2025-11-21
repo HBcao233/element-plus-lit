@@ -6,7 +6,7 @@ export default class Sidebar extends ElElement {
   --el-sidebar-bg-color: #ffffff;
 }
 
-.el-sidebar {
+[part=el-sidebar] {
   overflow: auto;
   box-sizing: border-box;
   width: var(--el-sidebar-width, 80%);
@@ -21,7 +21,7 @@ export default class Sidebar extends ElElement {
     transform .5s cubic-bezier(.19, 1, .22, 1);
 }
 
-.el-sidebar[open] {
+[part=el-sidebar][open] {
   opacity: 1;
   transform: translateX(0);
 }
@@ -38,9 +38,36 @@ export default class Sidebar extends ElElement {
   
   render() {
     return html`
-<el-overlay part="el-overlay" ?open="${this.open}" @click="${this.onClick}" @hide="${this.onHide}">
-  <el-scrollbar part="el-sidebar" class="el-sidebar" ?open="${this.open}"><slot></slot></el-scrollbar>
+<el-overlay 
+  part="el-overlay" 
+  @click="${this.onClick}" 
+>
+  <el-scrollbar part="el-sidebar"><slot></slot></el-scrollbar>
 </el-overlay>`;
+  }
+  
+  get open() {
+    return this.overlay.open;
+  }
+  
+  set open(v) {
+    this.overlay.open = !!v;
+  }
+  
+  firstUpdated() {
+    this.overlay = this.renderRoot.firstElementChild;
+  }
+  
+  show() {
+    this.open = true;
+  }
+  
+  hide() {
+    this.open = false;
+  }
+  
+  toggle() {
+    this.open = !this.open;
   }
   
   onClick(e) {
@@ -66,9 +93,6 @@ export default class Sidebar extends ElElement {
     }
   }
   
-  onHide(e) {
-    this.open = false;
-  }
 }
 
 customElements.define('el-sidebar', Sidebar);

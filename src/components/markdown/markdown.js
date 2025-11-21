@@ -1,9 +1,11 @@
 import { ElElement, html, css } from '../element/index.js';
 import MarkdownParser from './parser.js';
 
+
 export default class Markdown extends ElElement {
   static styles = css`
 :host {
+  display: block;
   width: 100%;
 }
 
@@ -45,6 +47,12 @@ p {
   word-break: break-word;
 }
 
+p:first-child {
+  margin-top: 0;
+}
+p:last-child {
+  margin-bottom: 0;
+}
 
 code {
   box-sizing: border-box;
@@ -110,10 +118,6 @@ li>:last-child {
 li::marker {
   color: #61666b;
   line-height: 28px;
-}
-
-el-katex {
-  width: 100%
 }
   `;
   

@@ -237,25 +237,48 @@ export default class Popper extends ElElement {
     return this.renderRoot.lastElementChild;
   }
   
+  willUpdate(changedProps) {
+    if (changedProps.has('open')) {
+      const oldValue = changedProps.get('open');
+      if (!oldValue && this.open) {
+        const success = this.dispatchEvent(new Event('before-show', {
+          bubbles: true,
+          composed: true,
+          cancelable: true,
+        }));
+        if (!success) this.open = false;
+      } else if (oldValue && !this.open) {
+        const success = this.dispatchEvent(new Event('before-hide', {
+          bubbles: true,
+          composed: true,
+          cancelable: true,
+        }));
+        if (!success) this.open = true;
+      }
+    }
+  }
+  
   updated(changedProps) {
     if (changedProps.has('placement')) {
       this._placement = this.placement;
       this.dataset.popperPlacement = this._placement;
-    } else if (changedProps.has('_placement')) {
+    } 
+    if (changedProps.has('_placement')) {
       this.dataset.popperPlacement = this._placement;
     }
-    
     if (changedProps.has('open')) {
       if (this.open) {
-        this.dispatchEvent(new Event('before-show', {
+        this.popper.showPopover();
+        this.dispatchEvent(new Event('show', {
           bubbles: true,
-          composed: true,
+          composed: false,
           cancelable: false,
         }));
       } else {
-        this.dispatchEvent(new Event('before-hide', {
+        this.popper.hidePopover();
+        this.dispatchEvent(new Event('hide', {
           bubbles: true,
-          composed: true,
+          composed: false,
           cancelable: false,
         }));
       }
@@ -264,17 +287,14 @@ export default class Popper extends ElElement {
   
   show() {
     this.open = true;
-    this.popper.showPopover();
   }
   
   hide() {
     this.open = false;
-    this.popper.hidePopover();
   }
   
   toggle() {
-    if (this.open) this.hide();
-    else this.show();
+    this.open = !this.open;
   }
   
   onMounted() {

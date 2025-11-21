@@ -36,6 +36,7 @@ const NodeType = {
   HORIZONTAL_RULE: 'HORIZONTAL_RULE',
   TABLE: 'TABLE',
   MATH_BLOCK: 'MATH_BLOCK',
+  MATH_INLINE: 'MATH_INLINE',
   HTML_BLOCK: 'HTML_BLOCK',
   HTML_INLINE: 'HTML_INLINE',
   TEXT: 'TEXT',
@@ -70,7 +71,7 @@ class Lexer {
       horizontalRule: /^(-{3,}|\*{3,}|_{3,})$/,
       tableRow: /^\|(.+)\|$/,
       tableSeparator: /^\|[\s\-:\|]+\|$/,
-      mathBlock: /^\$\$\s*$/,
+      mathBlock: /^\s*\$\$\s*(.*)$/,
       htmlBlock: /^<(\/?)(div|p|section|article|aside|header|footer|nav|main|figure|figcaption|table|thead|tbody|tfoot|tr|th|td|ul|ol|li|dl|dt|dd|blockquote|pre|h[1-6]|hr|form|fieldset|legend|details|summary)(\s[^>]*)?>.*$/i,
       htmlSelfClosing: /^<(br|hr|img|input|meta|link)(\s[^>]*)?\/?>.*$/i,
     };
@@ -151,7 +152,7 @@ class Lexer {
 
     const mathBlockMatch = line.match(this.patterns.mathBlock);
     if (mathBlockMatch) {
-      return this.tokenizeMathBlock();
+      return this.tokenizeMathBlock(mathBlockMatch);
     }
 
     const hrMatch = line.match(this.patterns.horizontalRule);
@@ -175,24 +176,12 @@ class Lexer {
 
     const ulMatch = line.match(this.patterns.unorderedListItem);
     if (ulMatch) {
-      this.currentIndex++;
-      return {
-        type: TokenType.UNORDERED_LIST_ITEM,
-        indent: ulMatch[1].length,
-        marker: ulMatch[2],
-        content: ulMatch[3],
-      };
+      return this.tokenizeListItem(ulMatch, TokenType.UNORDERED_LIST_ITEM);
     }
 
     const olMatch = line.match(this.patterns.orderedListItem);
     if (olMatch) {
-      this.currentIndex++;
-      return {
-        type: TokenType.ORDERED_LIST_ITEM,
-        indent: olMatch[1].length,
-        number: olMatch[2],
-        content: olMatch[3],
-      };
+      return this.tokenizeListItem(olMatch, TokenType.ORDERED_LIST_ITEM);
     }
 
     const indentedCodeMatch = line.match(this.patterns.indentedCode);
@@ -297,14 +286,15 @@ class Lexer {
    * Tokenizes a math block.
    * @return {Object} Math block token.
    */
-  tokenizeMathBlock() {
+  tokenizeMathBlock(match) {
     this.currentIndex++;
     const content = [];
 
     while (this.currentIndex < this.lines.length) {
       const line = this.lines[this.currentIndex];
       
-      if (this.patterns.mathBlock.test(line)) {
+      if (match = line.match(/^\s*(.*)\$\$\s*$/)) {
+        if (match[1]) content.push(match[1]);
         this.currentIndex++;
         break;
       }
@@ -366,6 +356,67 @@ class Lexer {
     return {
       type: TokenType.INDENTED_CODE,
       content: lines.join('\n'),
+    };
+  }
+  
+  /**
+   * Tokenizes a list item with its continuation lines.
+   * @param {Array} match - The regex match for the list item.
+   * @param {string} type - The token type.
+   * @return {Object} List item token.
+   */
+  tokenizeListItem(match, type) {
+    const baseIndent = match[1].length;
+    const content = [match[3]]; // 第一行内容
+    this.currentIndex++;
+    
+    // 收集后续缩进的内容
+    while (this.currentIndex < this.lines.length) {
+      const line = this.lines[this.currentIndex];
+      
+      // 空行处理
+      if (line.trim() === '') {
+        // 检查是否是列表项内的空行
+        if (this.currentIndex + 1 < this.lines.length) {
+          const nextLine = this.lines[this.currentIndex + 1];
+          const nextIndent = nextLine.match(/^(\s*)/)[1].length;
+          
+          // 如果下一行缩进足够，认为空行是列表项的一部分
+          if (nextIndent >= baseIndent + 2) {
+            content.push('');
+            this.currentIndex++;
+            continue;
+          }
+        }
+        break;
+      }
+      
+      // 检查是否是同级或更外层的列表项
+      const listMatch = line.match(this.patterns.orderedListItem) || 
+                        line.match(this.patterns.unorderedListItem);
+      if (listMatch && listMatch[1].length <= baseIndent) {
+        break;
+      }
+      
+      // 检查缩进
+      const lineIndent = line.match(/^(\s*)/)[1].length;
+      if (lineIndent >= baseIndent + 2) {
+        // 移除基础缩进
+        const dedentAmount = baseIndent + 2;
+        const dedented = line.substring(Math.min(dedentAmount, lineIndent));
+        content.push(dedented);
+        this.currentIndex++;
+      } else {
+        break;
+      }
+    }
+    
+    return {
+      type,
+      indent: baseIndent,
+      number: type === TokenType.ORDERED_LIST_ITEM ? match[2] : undefined,
+      marker: type === TokenType.UNORDERED_LIST_ITEM ? match[2] : undefined,
+      content: content.join('\n'),
     };
   }
 
@@ -635,23 +686,35 @@ class Parser {
       const token = this.currentToken();
       this.advance();
 
+      // 递归解析列表项内容，支持块级元素
+      const lexer = new Lexer();
+      const tokens = lexer.tokenize(token.content);
+      const parser = new Parser();
+      const contentAst = parser.parse(tokens);
+
       const item = {
         type: NodeType.LIST_ITEM,
         indent: token.indent,
-        children: this.parseInline(token.content),
+        children: contentAst.children.length > 0 ? contentAst.children : [
+          {
+            type: NodeType.PARAGRAPH,
+            children: [{ type: NodeType.TEXT, value: '' }]
+          }
+        ],
       };
-
       items.push(item);
+      
+      // 跳过空行
+      while (this.currentToken().type === TokenType.BLANK_LINE) this.advance();
     }
 
     const root = this.buildNestedList(items);
-
     return {
       type: listType,
       children: root,
     };
   }
-
+  
   /**
    * Builds a nested list structure from flat list items based on indentation.
    * @param {Array<Object>} items - Flat array of list items.
@@ -734,6 +797,7 @@ class Parser {
       { type: NodeType.BOLD, regex: /\*\*(.+?)\*\*/g },
       { type: NodeType.ITALIC, regex: /\*(.+?)\*/g },
       { type: NodeType.STRIKETHROUGH, regex: /~~(.+?)~~/g },
+      { type: NodeType.MATH_INLINE, regex: /\$(.+)\$/g },
       { type: NodeType.HTML_INLINE, regex: /<([a-z][a-z0-9]*)\b[^>]*>.*?<\/\1>|<[a-z][a-z0-9]*\b[^>]*\/?>/gi },
     ];
 
@@ -815,6 +879,12 @@ class Parser {
             children: [{ type: NodeType.TEXT, value: token.match[1] }],
           });
           break;
+        case NodeType.MATH_INLINE:
+          nodes.push({
+            type: NodeType.MATH_INLINE,
+            content: token.match[1].replace(/^\$+|\$+$/g, ''),
+          });
+          break;
         case NodeType.HTML_INLINE:
           nodes.push({
             type: NodeType.HTML_INLINE,
@@ -886,7 +956,7 @@ class Renderer {
     if (ast.type === NodeType.DOCUMENT) {
       return ast.children.map(child => this.renderNode(child));
     }
-    return [this.renderNode(ast)];
+    return this.renderNode(ast);
   }
 
   /**
@@ -985,9 +1055,9 @@ class Renderer {
    * @return {*} The rendered HTML.
    */
   renderList(node) {
-    const tag = node.type === NodeType.UNORDERED_LIST ? 'ul' : 'ol';
+    const tag = node.type === NodeType.UNORDERED_LIST ? literal`ul` : literal`ol`;
     const items = this.renderListItems(node.children);
-    return unsafeHTML(`<${tag}>${items}</${tag}>`);
+    return html`<${tag}>${items}</${tag}>`;
   }
 
   /**
@@ -996,44 +1066,7 @@ class Renderer {
    * @return {string} The rendered HTML string.
    */
   renderListItems(items) {
-    let htmlStr = '';
-
-    let i = 0;
-    while (i < items.length) {
-      const item = items[i];
-      const hasChildren = item.children && item.children.some(
-        child => child.type === NodeType.LIST_ITEM
-      );
-
-      htmlStr += '<li>';
-      
-      const inlineChildren = item.children.filter(
-        child => child.type !== NodeType.LIST_ITEM
-      );
-      if (inlineChildren.length > 0) {
-        inlineChildren.forEach(child => {
-          if (child.type === NodeType.TEXT) {
-            htmlStr += this.escapeHtml(child.value);
-          } else {
-            htmlStr += child.value || '';
-          }
-        });
-      }
-
-      if (hasChildren) {
-        const nestedItems = item.children.filter(
-          child => child.type === NodeType.LIST_ITEM
-        );
-        
-        const listHtml = this.renderListItems(nestedItems);
-        htmlStr += `<ul>${listHtml}</ul>`;
-      }
-
-      htmlStr += '</li>';
-      i++;
-    }
-
-    return htmlStr;
+    return items.map(item => html`<li>${item.children.map(child => this.renderNode(child))}</li>`);
   }
 
   /**
@@ -1089,7 +1122,7 @@ class Renderer {
   renderInlineNode(node) {
     switch (node.type) {
       case NodeType.TEXT:
-        return this.escapeHtml(node.value);
+        return node.value;
       case NodeType.BOLD:
         return html`<strong>${this.renderInlineNodes(node.children)}</strong>`;
       case NodeType.ITALIC:
@@ -1097,13 +1130,15 @@ class Renderer {
       case NodeType.STRIKETHROUGH:
         return html`<del>${this.renderInlineNodes(node.children)}</del>`;
       case NodeType.CODE:
-        return html`<code>${this.escapeHtml(node.value)}</code>`;
+        return html`<code>${node.value}</code>`;
       case NodeType.LINK:
-        return html`<a href="${node.url}" target="_blank" rel="noreferrer">${this.escapeHtml(node.text)}</a>`;
+        return html`<a href="${node.url}" target="_blank" rel="noreferrer">${node.text}</a>`;
       case NodeType.IMAGE:
-        return html`<a href="${node.url}" target="_blank" rel="noreferrer">${this.escapeHtml(node.url)}</a>`;
+        return html`<a href="${node.url}" target="_blank" rel="noreferrer">${node.url}</a>`;
       case NodeType.LINE_BREAK:
         return html`<br/>`;
+      case NodeType.MATH_INLINE:
+        return html`<el-katex .expression="${node.content}"></el-katex>`;
       case NodeType.HTML_INLINE:
         return unsafeHTML(node.content);
       default:

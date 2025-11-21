@@ -44,6 +44,10 @@ export default class Katex extends ElElement {
   width: -moz-min-content;
   width: min-content;
 }
+:host(:not([block])) .katex .base {
+  display: contents;
+}
+
 .katex .strut {
   display: inline-block;
 }
@@ -1104,9 +1108,13 @@ export default class Katex extends ElElement {
   max-width: 100%;
   padding: 4px;
   display: block;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible;
   margin: 1em 0;
+}
+
+:host(:not([block])) el-scrollbar,
+:host(:not([block])) el-scrollbar::part(wrap) {
+  display: inline;
 }
   `;
   
@@ -1116,6 +1124,11 @@ export default class Katex extends ElElement {
       type: String,
       default: '',
       attribute: true,
+    },
+    block: {
+      type: Boolean,
+      attribute: true,
+      default: false,
     },
     // 是否在错误时抛出异常
     throwOnError: { 
@@ -1139,7 +1152,7 @@ export default class Katex extends ElElement {
 
   render() {
     const rendered = this._renderKatex();
-    return html`${unsafeHTML(rendered)}`;
+    return html`<el-scrollbar>${unsafeHTML(rendered)}</el-scrollbar>`;
   }
 
   _renderKatex() {
@@ -1149,7 +1162,7 @@ export default class Katex extends ElElement {
 
     try {
       return katex.renderToString(this.expression, {
-        displayMode: true,
+        displayMode: this.block,
         throwOnError: this.throwOnError,
         errorColor: this.errorColor,
         minRuleThickness: this.minRuleThickness,

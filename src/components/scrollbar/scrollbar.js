@@ -32,10 +32,15 @@ export default class Scrollbar extends ElElement {
   bottom: 2px;
   z-index: 1;
   border-radius: 4px;
+  opacity: 0;
+  transition: opacity .3s;
 }
 [part="bar horizontal"] {
   height: 6px;
   left: 2px;
+}
+[part~=wrap]:hover ~ [part="bar"] {
+  opacity: 1;
 }
 
 [part=thumb] {
@@ -66,12 +71,14 @@ export default class Scrollbar extends ElElement {
     this.horizontal = this.wrap.nextElementSibling;
     this.vertical = this.horizontal.nextElementSibling;
     this.renderRoot.addEventListener('slotchange', (e) => {
-      this.horizontal.firstElementChild.style.width = (this.wrap.clientWidth / this.wrap.scrollWidth * this.wrap.clientWidth - 4) + 'px';
+      if (this.wrap.clientWidth < this.wrap.scrollWidth) {
+        this.horizontal.firstElementChild.style.width = (this.wrap.clientWidth / this.wrap.scrollWidth * this.wrap.clientWidth - 4) + 'px';
+      }
     });
     this.wrap.addEventListener('scroll', (e) => {
       const percentX = (this.wrap.scrollLeft) / (this.wrap.scrollWidth - this.wrap.clientWidth) * 100;
       this.horizontal.firstElementChild.style.transform = `translateX(${percentX}%)`;
-    })
+    });
     
   }
 

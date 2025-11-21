@@ -1,6 +1,7 @@
 import { ElElement, html, css } from '../element/index.js';
+import { isIterable } from '/src/utils.js';
 
-export default class Dialog extends ElElement {
+class Dialog extends ElElement {
   static styles = css`
 :host {
   --el-dialog-width: 50%;
@@ -14,11 +15,11 @@ export default class Dialog extends ElElement {
   --el-dialog-border-radius: var(--el-border-radius-base);
 }
 
-el-overlay {
+[part=el-dialog] {
   display: flex;
 }
 
-[part=el-dialog] {
+[part=content] {
   position: relative;
   margin: auto;
   background: var(--el-dialog-bg-color);
@@ -30,22 +31,26 @@ el-overlay {
   overflow-wrap: break-word;
 }
 @media (min-width: 768px) {
-  margin: var(--el-dialog-margin-top, 15vh) auto 50px;
+  [part=content] {
+    margin: var(--el-dialog-margin-top, 15vh) auto 50px;
+  }
 }
 
-[part=el-dialog__header] {
+[part=header] {
   padding-bottom: var(--el-dialog-padding-primary);
 }
-:host([show-close]) [part=el-dialog__header] {
+:host([show-close]) [part=header] {
   padding-right: calc(var(--el-dialog-padding-primary) + var(--el-message-close-size, 16px));
 }
 
-[part=el-dialog__title] {
+[part=title] {
   color: var(--el-text-color-primary);
   font-size: var(--el-dialog-title-font-size);
   line-height: var(--el-dialog-font-line-height);
 }
-[part=el-dialog__headerbtn]::part(el-button) {
+
+[part=headerbtn]::part(el-button) {
+  display: none;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -58,10 +63,20 @@ el-overlay {
   top: 0;
   width: 48px;
 }
+:host([show-close]) [part=headerbtn]::part(el-button) {
+  display: block;
+}
 
-[part=el-dialog__body] {
+
+[part=body] {
   color: var(--el-text-color-regular);
   font-size: var(--el-dialog-content-font-size);
+}
+
+[part=footer] {
+  padding-top: var(--el-dialog-padding-primary);
+  text-align: right;
+  box-sizing: border-box;
 }
   `;
   
@@ -80,18 +95,19 @@ el-overlay {
       attribute: 'show-close',
       reflect: true,
       default: false,
-    }
+    },
   }
   
   render() {
     return html`
-<el-overlay part="el-overlay" ?open="${this.open}" @click="${this.onClick}" @hide="${this.onHide}">
-  <div part="el-dialog">
-    <header part="el-dialog__header">
-      <span part="el-dialog__title" role="heading" aria-level="2">${this.title}</span>
-      <el-button part="el-dialog__headerbtn" icon="Close"></el-button>
+<el-overlay part="el-dialog" ?open="${this.open}" @click="${this.onClick}" @hide="${this.onHide}">
+  <div part="content">
+    <header part="header">
+      <span part="title" role="heading" aria-level="2">${this.title}</span>
+      <el-button part="headerbtn" icon="Close"></el-button>
     </header>
-    <div part="el-dialog__body"><slot></slot></div>
+    <div part="body"><slot></slot></div>
+    <footer part="footer"><slot name="footer"></slot></footer>
   </div>
 </el-overlay>`;
   }
@@ -119,9 +135,49 @@ el-overlay {
     }
   }
   
-  onHide() {
+  show() {
+    this.open = true;
+  }
+  
+  hide() {
+    this.open = false;
+  }
+  
+  firstUpdated() {
+    this.overlay = this.renderRoot.firstElementChild;
+  }
+  
+  onHide(e) {
+    if (e.composedPath()[0] !== this.overlay) return;
     this.open = false;
   }
 }
 
 customElements.define('el-dialog', Dialog);
+
+export default function ElDialog(options = {}, children) {
+  return new Promise((resolve, reject) => {
+    const dialog = document.createElement('el-dialog');
+    dialog.title = options.title;
+    
+    if (children) {
+      if (!isIterable(children)) children = [children];
+      for (const i of children) {
+        dialog.appendChild(i); 
+      }
+    }
+    document.body.appendChild(dialog);
+    requestAnimationFrame(() => {
+      dialog.open = true;
+    });
+    
+    const cleanup = () => {
+      dialog.removeEventListener('confirm', handleConfirm);
+      dialog.removeEventListener('cancel', handleCancel);
+      dialog.close();
+    };
+    
+    dialog.addEventListener('confirm', handleConfirm);
+    dialog.addEventListener('cancel', handleCancel);
+  });
+}

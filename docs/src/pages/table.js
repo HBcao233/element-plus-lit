@@ -3,7 +3,7 @@ import { globalCSS } from '../css.js';
 
 const code_basic = `import { ElElement, html } from 'element-plus-lit.min.js';
 
-class MyTable extends ElElement {
+class MyApp extends ElElement {
   static properties = {
     tableData: {
       type: Array,
@@ -40,7 +40,9 @@ class MyTable extends ElElement {
   <el-table-column prop="address" label="Address"></el-table-column>
 </el-table>\`;
   }
-}`;
+}
+
+customElements.define('my-app', MyApp)`;
 const code_stripe = `import { ElElement, html } from 'element-plus-lit.min.js';
 
 class MyTable extends ElElement {

@@ -1,7 +1,7 @@
 import { ElElement, html, css } from '/src/index.js';
 
 export class Button extends ElElement {
-  static category = 'Others';
+  static category = 'Basic';
   static styles = css`
 container > *:last-child {
   margin-bottom: 15px;

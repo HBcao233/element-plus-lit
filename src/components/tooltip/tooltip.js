@@ -16,9 +16,26 @@ export default class Tooltip extends ElElement {
   render() {
     return html`
 <slot></slot>
-<el-popper part="el-popper" .triggerRef="${() => this.triggerRef}" role="${this.role}" effect="${this.effect}" placement="${this.placement}" ?noArrow="${this.noArrow}" ?disabled="${this.disabled}" trigger="${this.trigger}">
+<el-popper 
+  part="el-popper" 
+  .triggerRef="${() => this.triggerRef}" 
+  role="${this.role}" 
+  effect="${this.effect}" 
+  placement="${this.placement}" 
+  ?noArrow="${this.noArrow}" 
+  ?disabled="${this.disabled}" 
+  trigger="${this.trigger}" 
+>
   <slot name="content">${this.content}</slot>
 </el-popper>`;
+  }
+  
+  get open() {
+    return this.popper.open;
+  }
+  
+  set open(v) {
+    this.popper.open = !!v;
   }
   
   firstUpdated() {
@@ -27,22 +44,19 @@ export default class Tooltip extends ElElement {
     } else {
       this.triggerRef = this.renderRoot.firstElementChild.assignedElements()[0] ?? this;
     }
-  }
-  
-  get popper() {
-    return this.renderRoot.lastElementChild;
+    this.popper = this.renderRoot.lastElementChild;
   }
   
   show() {
-    this.popper.show();
+    this.open = true;
   }
   
   hide() {
-    this.popper.hide();
+    this.open = false;
   }
   
   toggle() {
-    this.popper.popper();
+    this.open = !this.open;
   }
 }
 

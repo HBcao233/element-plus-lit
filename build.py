@@ -1,6 +1,7 @@
 import re 
 import os 
 import rcssmin 
+import time 
 
 
 def compress_css(match):
@@ -32,4 +33,7 @@ if __name__ == '__main__':
   remove_eof()
 
   print('\ngenerate dist/element-plus-lit.min.js...')
+  start_time = time.perf_counter()
   os.system('terser build/element-plus-lit.js -o dist/element-plus-lit.min.js -c -m -b')
+  run_time = time.perf_counter() - start_time
+  print(f'generated in {run_time:.2f}s')

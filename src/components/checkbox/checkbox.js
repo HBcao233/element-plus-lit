@@ -35,12 +35,14 @@ export default class Checkbox extends ElElement {
   white-space: nowrap;
   -webkit-user-select: none;
   user-select: none;
-  margin-right: 30px;
   height: var(--el-checkbox-height, 32px);
   -webkit-tap-highlight-color: transparent;
 }
 
-[part=el-checkbox]:last-of-type {
+:host {
+  margin-right: 30px;
+}
+:host(:last-of-type) {
   margin-right: 0;
 }
 
@@ -100,6 +102,11 @@ export default class Checkbox extends ElElement {
   height: 14px;
 }
 
+:host([size=small]) [part=inner] {
+  width: 12px;
+  height: 12px;
+}
+
 [part=inner]::after {
   box-sizing: content-box;
   content: "";
@@ -150,6 +157,9 @@ export default class Checkbox extends ElElement {
 
 :host([size=large]) [part=label] {
   font-size: 14px;
+}
+:host([size=small]) [part=label] {
+  font-size: 12px;
 }
   `;
   

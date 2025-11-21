@@ -34,6 +34,7 @@ export default class Overlay extends ElElement {
       type: Boolean,
       attribute: true,
       reflect: true,
+      default: false,
     },
     popover: {
       type: Boolean,
@@ -53,18 +54,30 @@ export default class Overlay extends ElElement {
         this.showPopover();
         this.dispatchEvent(new Event('show', {
           bubbles: true,
-          composed: true,
+          composed: false,
           cancelable: false,
         }));
       } else {
         this.hidePopover();
         this.dispatchEvent(new Event('hide', {
           bubbles: true,
-          composed: true,
+          composed: false,
           cancelable: false,
         }));
       }
     }
+  }
+  
+  show() {
+    this.open = true;
+  }
+  
+  hide() {
+    this.open = false;
+  }
+  
+  toggle() {
+    this.open = !this.open;
   }
 }
 

@@ -17,6 +17,8 @@ export * from './sidebar/index.js';
 
 // Form 
 export * from './checkbox/index.js';
+export * from './form/index.js';
+export * from './input/index.js';
 
 // Data
 export * from './table/index.js';
