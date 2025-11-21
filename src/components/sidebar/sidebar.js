@@ -21,7 +21,7 @@ export default class Sidebar extends ElElement {
     transform .5s cubic-bezier(.19, 1, .22, 1);
 }
 
-[part=el-sidebar][open] {
+:host([open]) [part=el-sidebar] {
   opacity: 1;
   transform: translateX(0);
 }
@@ -47,11 +47,11 @@ export default class Sidebar extends ElElement {
   }
   
   get open() {
-    return this.overlay.open;
+    return this.overlay?.open;
   }
   
   set open(v) {
-    this.overlay.open = !!v;
+    if (this.overlay) this.overlay.open = !!v;
   }
   
   firstUpdated() {

@@ -30,11 +30,11 @@ export default class Dropdown extends ElElement {
   }
   
   get open() {
-    return this.popper.open;
+    return this.popper?.open;
   }
   
   set open(v) {
-    this.popper.open = !!v;
+    if (this.popper) this.popper.open = !!v;
   }
   
   firstUpdated() {

@@ -841,7 +841,7 @@ class Overlay extends ElElement {
 customElements.define('el-overlay', Overlay);
 
 class Sidebar extends ElElement {
-  static styles = o`:host{--el-sidebar-bg-color:#ffffff}[part=el-sidebar]{overflow:auto;box-sizing:border-box;width:var(--el-sidebar-width,80%);height:100%;background-color:var(--el-sidebar-bg-color);padding:48px 32px;opacity:0;transform:translateX(-100%);transition:background-color var(--el-transition-duration-fast),opacity .25s,transform .5s cubic-bezier(.19,1,.22,1)}[part=el-sidebar][open]{opacity:1;transform:translateX(0)}`;
+  static styles = o`:host{--el-sidebar-bg-color:#ffffff}[part=el-sidebar]{overflow:auto;box-sizing:border-box;width:var(--el-sidebar-width,80%);height:100%;background-color:var(--el-sidebar-bg-color);padding:48px 32px;opacity:0;transform:translateX(-100%);transition:background-color var(--el-transition-duration-fast),opacity .25s,transform .5s cubic-bezier(.19,1,.22,1)}:host([open]) [part=el-sidebar]{opacity:1;transform:translateX(0)}`;
   
   static properties = {
     open: {
@@ -856,11 +856,11 @@ class Sidebar extends ElElement {
   }
   
   get open() {
-    return this.overlay.open;
+    return this.overlay?.open;
   }
   
   set open(v) {
-    this.overlay.open = !!v;
+    if (this.overlay) this.overlay.open = !!v;
   }
   
   firstUpdated() {
@@ -1727,11 +1727,11 @@ class Dropdown extends ElElement {
   }
   
   get open() {
-    return this.popper.open;
+    return this.popper?.open;
   }
   
   set open(v) {
-    this.popper.open = !!v;
+    if (this.popper) this.popper.open = !!v;
   }
   
   firstUpdated() {
@@ -1877,11 +1877,11 @@ class Tooltip extends ElElement {
   }
   
   get open() {
-    return this.popper.open;
+    return this.popper?.open;
   }
   
   set open(v) {
-    this.popper.open = !!v;
+    if (this.popper) this.popper.open = !!v;
   }
   
   firstUpdated() {
