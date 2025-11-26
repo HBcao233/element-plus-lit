@@ -1,4 +1,4 @@
-import { ElElement, css, staticHtml as html, literal } from '../element/index.js';
+import { ElElement, css, staticHtml as html, literal } from '/src/element.js';
 
 const hash = location.hash?.slice(1);
 let listened = false;

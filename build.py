@@ -27,7 +27,9 @@ def remove_eof():
 
 
 if __name__ == '__main__':
-  os.system('rollup -c')
+  error = os.system('rollup -c')
+  if error: 
+    exit(error)
   
   print('\nremove \\n in build/element-plus-lit.js')
   remove_eof()

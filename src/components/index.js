@@ -1,9 +1,7 @@
 // Basic
-export { ElElement } from './element/index.js';
 export * from './icon/index.js';
 export * from './heading/index.js';
 export * from './button/index.js';
-export * from './button-group/index.js';
 
 // Layout
 export * from './container/index.js';
@@ -19,6 +17,7 @@ export * from './sidebar/index.js';
 export * from './checkbox/index.js';
 export * from './form/index.js';
 export * from './input/index.js';
+export * from './switch/index.js';
 
 // Data
 export * from './table/index.js';

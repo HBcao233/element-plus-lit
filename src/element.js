@@ -1,11 +1,36 @@
-import { LitElement } from '../../../static/lit-all.min.js';
-export * from '../../../static/lit-all.min.js';
+import { LitElement } from '/static/lit-all.min.js';
+export * from '/static/lit-all.min.js';
 
 export class ElElement extends LitElement {
+  /*#defineProperty(k) {
+    const that = this;
+    let _value;
+    Object.defineProperty(this, k, {
+      get() {
+        return _value;
+      },
+      set(value) {
+        _value = new Proxy(value, {
+          set(obj, prop, value, receiver) {
+            Reflect.set(obj, prop, value, receiver);
+            that.requestUpdate();
+            return true;
+          }
+        });
+      },
+      enumerable: true,
+      configurable: false,
+    });
+  }*/
   
   constructor() {
     super();
     if (this.constructor.properties) for (let [k, v] of Object.entries(this.constructor.properties)) {
+      /*if (v.type === Array || v.type === Object) {
+        this.#defineProperty(k);
+        if (v.type === Array) this[k] = v.default ?? [];
+        else this[k] = v.default ?? {};
+      }*/
       if (v.default !== undefined) {
         this[k] = v.default;
       }

@@ -1,2 +1,3 @@
 import ElTable from './table.js';
-export { ElTable as default };
+import ElTableColumn from './column.js';
+export { ElTable, ElTableColumn };

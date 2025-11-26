@@ -1,7 +1,13 @@
-import { ElElement, html } from '../element/index.js';
+import { ElElement, html, css } from '/src/element.js';
 import Popper from '../popper/popper.js';
 
 export default class Tooltip extends ElElement {
+  static styles = css`
+:host {
+  -webkit-tap-highlight-color: transparent;
+}
+  `;
+  
   static properties = {
     ...Popper.properties,
     content: {
@@ -10,6 +16,14 @@ export default class Tooltip extends ElElement {
     effect: {
       type: String,
       default: 'dark',
+    },
+    trigger: {
+      type: String,
+      default: 'hover',
+      converter: (value, type) => {
+        if (Popper.triggers.includes(value)) return value;
+        return 'hover';
+      },
     },
   };
   

@@ -1,5 +1,4 @@
-// katex-element.js
-import { ElElement, html, css, unsafeHTML } from '../element/index.js';
+import { ElElement, html, css, unsafeHTML } from '/src/element.js';
 import katex from '/static/katex.js';
 
 export default class Katex extends ElElement {

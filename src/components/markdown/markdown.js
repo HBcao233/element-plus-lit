@@ -1,4 +1,4 @@
-import { ElElement, html, css } from '../element/index.js';
+import { ElElement, html, css } from '/src/element.js';
 import MarkdownParser from './parser.js';
 
 

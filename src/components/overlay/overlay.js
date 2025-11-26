@@ -1,31 +1,30 @@
-import { ElElement, html, css } from '../element/index.js';
+import { ElElement, html, css } from '/src/element.js';
 
 export default class Overlay extends ElElement {
   static styles = css`
 :host {
   display: block;
-  position: fixed;
-  inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 2000;
-  overflow: auto;
-  visibility: hidden;
-  opacity: 0;
-  transition: 
-    visibility var(--el-transition-duration-fast),
-    opacity .25s;
   border: none;
   padding: 0;
   margin: unset;
   max-width: unset;
   max-height: unset;
   background-color: var(--el-overlay-color-lighter);
+  visibility: hidden;
+  opacity: 0;
+  transition: 
+    visibility var(--el-transition-duration-fast),
+    opacity .25s;
 }
-
 :host([open]) {
   visibility: visible;
   opacity: 1;
+}
+
+:host::backdrop {
+  display: none;
 }
   `;
   

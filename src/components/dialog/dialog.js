@@ -1,4 +1,4 @@
-import { ElElement, html, css } from '../element/index.js';
+import { ElElement, html, css } from '/src/element.js';
 import { isIterable } from '/src/utils.js';
 
 class Dialog extends ElElement {
@@ -13,6 +13,7 @@ class Dialog extends ElElement {
   --el-dialog-font-line-height: var(--el-font-line-height-primary);
   --el-dialog-padding-primary: 16px;
   --el-dialog-border-radius: var(--el-border-radius-base);
+  --el-dialog-text-color: var(--el-text-color-regular);
 }
 
 [part=el-dialog] {
@@ -67,9 +68,8 @@ class Dialog extends ElElement {
   display: block;
 }
 
-
 [part=body] {
-  color: var(--el-text-color-regular);
+  color: var(--el-dialog-text-color);
   font-size: var(--el-dialog-content-font-size);
 }
 
@@ -100,11 +100,13 @@ class Dialog extends ElElement {
   
   render() {
     return html`
-<el-overlay part="el-dialog" ?open="${this.open}" @click="${this.onClick}" @hide="${this.onHide}">
+<el-overlay part="el-dialog" @click="${this.onClick}">
   <div part="content">
     <header part="header">
-      <span part="title" role="heading" aria-level="2">${this.title}</span>
-      <el-button part="headerbtn" icon="Close"></el-button>
+      <slot name="header">
+        <span part="title" role="heading" aria-level="2">${this.title}</span>
+        <el-button part="headerbtn" icon="Close"></el-button>
+      </slot>
     </header>
     <div part="body"><slot></slot></div>
     <footer part="footer"><slot name="footer"></slot></footer>
@@ -135,6 +137,20 @@ class Dialog extends ElElement {
     }
   }
   
+  
+  firstUpdated() {
+    this.overlay = this.renderRoot.firstElementChild;
+    this.content = this.overlay.firstElementChild;
+  }
+  
+  get open() {
+    return this.overlay?.open;
+  }
+  
+  set open(v) {
+    if (this.overlay) this.overlay.open = !!v;
+  }
+  
   show() {
     this.open = true;
   }
@@ -143,13 +159,33 @@ class Dialog extends ElElement {
     this.open = false;
   }
   
-  firstUpdated() {
-    this.overlay = this.renderRoot.firstElementChild;
+  toggle() {
+    this.open = !this.open;
   }
   
-  onHide(e) {
-    if (e.composedPath()[0] !== this.overlay) return;
-    this.open = false;
+  get clientWidth() {
+    return this.content.clientWidth;
+  }
+  get clientHeight() {
+    return this.content.clientHeight;
+  }
+  get offsetWidth() {
+    return this.content.offsetWidth;
+  }
+  get offsetHeight() {
+    return this.content.offsetHeight;
+  }
+  get scrollWidth() {
+    return this.content.scrollWidth;
+  }
+  get scrollHeight() {
+    return this.content.scrollHeight;
+  }
+  get scrollLeft() {
+    return this.content.scrollLeft;
+  }
+  get scrollTop() {
+    return this.content.scrollTop;
   }
 }
 

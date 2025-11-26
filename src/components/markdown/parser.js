@@ -1,4 +1,4 @@
-import { staticHtml as html, literal, nothing, unsafeHTML } from '../element/index.js';
+import { staticHtml as html, literal, nothing, unsafeHTML } from '/src/element.js';
 
 /**
  * Token types enumeration.

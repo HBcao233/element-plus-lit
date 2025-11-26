@@ -1,4 +1,4 @@
-import { ElElement, html, css } from '../element/index.js';
+import { ElElement, html, css } from '/src/element.js';
 
 export default class FormItem extends ElElement {
   static styles = css`
@@ -27,7 +27,6 @@ export default class FormItem extends ElElement {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  flex: 1;
   line-height: 32px;
   position: relative;
   font-size: var(--font-size);

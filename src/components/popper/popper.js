@@ -1,4 +1,4 @@
-import { ElElement, html, css } from '../element/index.js';
+import { ElElement, html, css } from '/src/element.js';
 
 export default class Popper extends ElElement {
   static effects = ['light', 'dark'];
@@ -47,10 +47,18 @@ export default class Popper extends ElElement {
   min-width: 10px;
   overflow-wrap: break-word;
   word-break: normal;
-  visibility: hidden;
-  opacity: 0;
-  transition: visibility .3s, opacity .3s;
   overflow: visible;
+}
+:host(*):popover-open {
+  animation: fadeIn .3s ease;
+}
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+  }
+  to { 
+    opacity: 1;
+  }
 }
 
 :host([part~=is-light]) {
@@ -215,11 +223,10 @@ export default class Popper extends ElElement {
       type: String,
       state: true,
     },
-    exportparts: {
-      type: String,
-      default: 'arrow:popper__arrow',
-      attribute: true,
-      reflect: true,
+    // hover 模式时的隐藏延迟
+    hideDelay: {
+      type: Number,
+      default: 150,
     },
   };
   
@@ -227,10 +234,6 @@ export default class Popper extends ElElement {
     return html`
 <slot></slot>
 <span part="arrow" class="el-popper__arrow" ?hidden="${this.noArrow}"></span>`;
-  }
-  
-  get popper() {
-    return this;
   }
   
   get arrow() {
@@ -268,14 +271,15 @@ export default class Popper extends ElElement {
     }
     if (changedProps.has('open')) {
       if (this.open) {
-        this.popper.showPopover();
+        this.showPopover();
+        this.adjustPosition();
         this.dispatchEvent(new Event('show', {
           bubbles: true,
           composed: false,
           cancelable: false,
         }));
       } else {
-        this.popper.hidePopover();
+        this.hidePopover();
         this.dispatchEvent(new Event('hide', {
           bubbles: true,
           composed: false,
@@ -286,6 +290,7 @@ export default class Popper extends ElElement {
   }
   
   show() {
+    clearTimeout(this.hideTimer);
     this.open = true;
   }
   
@@ -293,39 +298,60 @@ export default class Popper extends ElElement {
     this.open = false;
   }
   
+  scheduleHide() {
+    clearTimeout(this.hideTimer);
+    this.hideTimer = setTimeout(() => {
+      this.hide();
+    }, this.hideDelay);
+  }
+  
   toggle() {
     this.open = !this.open;
   }
   
   onMounted() {
+    this.setAttribute('popover', 'manual');
+    this.setAttribute('exportparts', 'arrow:popper__arrow');
     window.addEventListener('resize', this);
     document.addEventListener('scroll', this, {
       capture: true,
       passive: true,
     });
-    document.addEventListener('click', this);
     this.touch_timer = null;
   }
   
   firstUpdated() {
-    this.setAttribute('popover', '')
     this.part.add('is-' + this.effect);
     this.arrow.part.add('arrow-' + this.effect);
     this.exportparts += ', arrow-' + this.effect;
       
     if (!this.triggerRef) return;
-    this.popper.addEventListener('transitionstart', this);
-    this.popper.addEventListener('transitionend', this);
 
     this.triggerRef = this.triggerRef();
     if (!this.triggerRef) return;
     
     this.reference = this.triggerRef;
+    // click
+    this.triggerRef.addEventListener('click', this);
+    // hover
     this.triggerRef.addEventListener('mouseenter', this);
     this.triggerRef.addEventListener('mouseleave', this);
+    this.addEventListener('mouseenter', () => {
+      if (this.disabled) return;
+      if (this.trigger !== 'hover') return;
+      this.show();
+    });
+    this.addEventListener('mouseleave', () => {
+      if (this.disabled) return;
+      if (this.trigger !== 'hover') return;
+      this.scheduleHide();
+    })
+    
+    // contextmemu
     this.triggerRef.addEventListener('contextmemu', this);
     this.triggerRef.addEventListener('touchstart', this);
     this.triggerRef.addEventListener('touchend', this);
+    // focus
     this.triggerRef.addEventListener('focus', this, true);
     this.triggerRef.addEventListener('blur', this, true);
   }
@@ -333,12 +359,12 @@ export default class Popper extends ElElement {
   onBeforeUnmounted() {
     window.removeEventListener('resize', this);
     document.removeEventListener('scroll', this, true);
-    this.popper.removeEventListener('transitionstart', this);
-    this.popper.removeEventListener('transitionend', this);
     document.removeEventListener('click', this);
 
     if (!this.triggerRef) return;
     
+    // click 
+    this.triggerRef.removeEventListener('click', this);
     // hover
     this.triggerRef.removeEventListener('mouseenter', this);
     this.triggerRef.removeEventListener('mouseleave', this);
@@ -356,8 +382,6 @@ export default class Popper extends ElElement {
       'resize': this.onResize,
       'scroll': this.onScroll,
       'click': this.onClick,
-      'transitionstart': this.onTransitionstart,
-      'transitionend': this.onTransitionend,
       'mouseenter': this.onMouseenter,
       'mouseleave': this.onMouseleave,
       'contextmemu': this.onContextmemu,
@@ -383,22 +407,9 @@ export default class Popper extends ElElement {
   
   onClick(e) {
     if (this.disabled) return;
-    for (const target of e.composedPath()) {
-      if (target === this) {
-        e.preventDefault()
-        e.stopPropagation();
-        return;
-      }
-      if (target === this.triggerRef) {
-        e.preventDefault()
-        e.stopPropagation();
-        if (this.trigger === 'click') {
-          this.show();
-        }
-        return;
-      }
+    if (this.trigger === 'click') {
+      this.show();
     }
-    if (this.trigger !== 'focus') this.hide();
   }
   
   onMouseenter() {
@@ -407,10 +418,10 @@ export default class Popper extends ElElement {
     this.show();
   }
   
-  onMouseleave() {
+  onMouseleave(e) {
     if (this.disabled) return;
     if (this.trigger !== 'hover') return;
-    this.hide();
+    this.scheduleHide();
   }
   
   onContextmemu(e) {
@@ -446,34 +457,11 @@ export default class Popper extends ElElement {
     this.hide();
   }
   
-  onTransitionstart(e) {
-    if (this.disabled) return;
-    if (e.propertyName !== 'opacity') return;
-    this.adjustPosition();
-  }
-  
-  onTransitionend(e) {
-    if (e.propertyName !== 'opacity') return;
-    if (this.open) {
-      this.dispatchEvent(new Event('show', {
-        bubbles: true,
-        composed: true,
-        cancelable: false,
-      }));
-    } else {
-      this.dispatchEvent(new Event('hide', {
-        bubbles: true,
-        composed: true,
-        cancelable: false,
-      }));
-    }
-  }
-  
   adjustPosition() {
     if (this.disabled) return;
     
     const rect = this.reference.getBoundingClientRect();
-    const popper_rect = this.popper.getBoundingClientRect();
+    const popper_rect = this.getBoundingClientRect();
     const pw = popper_rect.width;
     const ph = popper_rect.height;
     const vw = window.innerWidth;
@@ -556,7 +544,7 @@ export default class Popper extends ElElement {
         y = rect.y + rect.height + offset + 5;
         break;
     }
-    this.popper.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    this.style.transform = `translate3d(${x}px, ${y}px, 0)`;
     this.arrow.style.transform = `translate3d(${arrowX}px, ${arrowY}px, 0)`;
   }
 }

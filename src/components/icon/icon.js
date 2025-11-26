@@ -1,4 +1,4 @@
-import { ElElement, html, css, styleMap, unsafeSVG, nothing } from '../element/index.js';
+import { ElElement, html, css, styleMap, unsafeSVG, nothing } from '/src/element.js';
 import ElementPlusIcons from '../../../static/element-plus-icons.js';
 
 export default class Icon extends ElElement {

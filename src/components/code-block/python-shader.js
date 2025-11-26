@@ -1,4 +1,4 @@
-import { html } from '../element/index.js';
+import { html } from '/src/element.js';
 
 export default class PythonShader {
   parse(code) {

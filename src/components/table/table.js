@@ -1,4 +1,4 @@
-import { ElElement, staticHtml as html, css, literal, nothing } from '../element/index.js'; 
+import { ElElement, staticHtml as html, css, literal, nothing } from '/src/element.js'; 
 import './column.js';
 
 export default class Table extends ElElement {

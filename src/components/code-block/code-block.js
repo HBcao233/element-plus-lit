@@ -1,4 +1,4 @@
-import { ElElement, html, css } from '../element/index.js';
+import { ElElement, html, css } from '/src/element.js';
 import { copyToClipboard } from '/src/utils.js';
 import MarkdownShader from './markdown-shader.js';
 import PythonShader from './python-shader.js';

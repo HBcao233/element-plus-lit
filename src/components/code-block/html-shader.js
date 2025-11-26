@@ -1,4 +1,4 @@
-import { html } from '../element/index.js';
+import { html } from '/src/element.js';
 
 /**
  * Void elements that don't have closing tags.

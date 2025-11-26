@@ -1,4 +1,4 @@
-import { ElElement, nothing } from '../element/index.js';
+import { ElElement, nothing } from '/src/element.js';
 
 export default class TableColumn extends ElElement {
   static properties = {

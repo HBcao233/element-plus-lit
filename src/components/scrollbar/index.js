@@ -1,2 +1,2 @@
 import ElScrollbar from './scrollbar.js';
-export default ElScrollbar;
+export { ElScrollbar };

@@ -1,4 +1,4 @@
-import { ElElement, html, css } from '../element/index.js';
+import { ElElement, html, css } from '/src/element.js';
 import Popper from '../popper/popper.js';
 
 export default class Dropdown extends ElElement {

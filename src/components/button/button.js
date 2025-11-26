@@ -1,4 +1,4 @@
-import { ElElement, html, css, nothing } from '../element/index.js';
+import { ElElement, html, css, nothing } from '/src/element.js';
 import { TinyColor } from '../../../static/tinycolor_v4.2.0.min.js';
 
 export default class Button extends ElElement {
@@ -60,7 +60,6 @@ export default class Button extends ElElement {
   align-items: center;
 }
 
-[part=el-button] el-icon + span,
 [part=el-button] slot[name=icon] + span {
   margin-left: var(--slot-margin-left);
 }
@@ -504,8 +503,9 @@ export default class Button extends ElElement {
   }
   
   firstUpdated() {
-    this.renderRoot.firstElementChild.lastElementChild.firstElementChild.addEventListener('slotchange', (e) => {
-      e.target.parentElement.style.setProperty('--slot-margin-left', '6px');
+    this.slot_content = this.renderRoot.firstElementChild.lastElementChild.firstElementChild;
+    this.slot_content.addEventListener('slotchange', (e) => {
+      if (this.icon) this.style.setProperty('--slot-margin-left', '6px');
     }, { once: true });
   }
   

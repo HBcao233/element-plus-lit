@@ -1,2 +1,3 @@
 import ElButton from './button.js';
-export default ElButton;
+import ElButtonGroup from './group.js';
+export { ElButton, ElButtonGroup }
